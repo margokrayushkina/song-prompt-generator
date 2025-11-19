@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Генератор промптов для мнемонических песен</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 16px;
+            line-height: 1.5;
+        }
+
+        h1, h2 {
+            margin-bottom: 0.4em;
+        }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 6px 8px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .row .field {
+            flex: 1;
+        }
+
+        button {
+            padding: 8px 14px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background: #f5f5f5;
+        }
+
+        button:hover {
+            background: #e8e8e8;
+        }
+
+        .buttons {
+            margin-top: 8px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .small {
+            font-size: 12px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Генератор промптов для мнемонических песен</h1>
+    <p class="small">
+        Заполните поля ниже — и страница сама соберёт промпт для ИИ, чтобы сгенерировать
+        мнемоническую песню, стишок или аудио-подсказку.
+    </p>
+
+    <div id="form-container">
+        <div class="field">
+            <label for="subject">Предмет</label>
+            <input type="text" id="subject" placeholder="Например: биология, математика, русский язык">
+        </div>
+
+        <div class="field">
+            <label for="topic">Тема</label>
+            <input type="text" id="topic" placeholder="Например: строение клетки, дроби, орфограммы">
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label for="age">Возраст/класс учащихся</label>
+                <input type="text" id="age" placeholder="Например: 3 класс, 10–11 лет">
+            </div>
+            <div class="field">
+                <label for="language">Язык</label>
+                <select id="language">
+                    <option value="русский">Русский</option>
+                    <option value="английский">Английский</option>
+                    <option value="другой">Другой (указать ниже в комментарии)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label for="format">Формат</label>
+                <select id="format">
+                    <option value="песня">Песня</option>
+                    <option value="стишок">Стишок</option>
+                    <option value="аудио-подсказка">Аудио-подсказка (ритмический текст)</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="style">Стиль / настроение</label>
+                <input type="text" id="style" placeholder="Например: весёлый, рэп, спокойный, сказочный">
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="keyPoints">Что обязательно включить (ключевые факты / правила)</label>
+            <textarea id="keyPoints" rows="4" placeholder="Перечислите 5–10 важных фактов или правил, которые дети должны запомнить. Каждый с новой строки."></textarea>
+            <div class="hint">
+                Это ваши “атомы смысла”: минимум информации, которую нужно упаковать в песню.
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="extra">Дополнительные пожелания (опционально)</label>
+            <textarea id="extra" rows="3" placeholder="Например: использовать известную детскую мелодию, избегать сложных терминов, добавить юмор и т.д."></textarea>
+        </div>
+
+        <div class="buttons">
+            <button id="generateBtn">Сгенерировать промпт</button>
+            <button id="clearBtn" type="button">Очистить форму</button>
+        </div>
+    </div>
+
+    <h2>Сгенерированный промпт</h2>
+    <p class="small">
+        Скопируйте этот текст и вставьте в ChatGPT или другой ИИ.
+    </p>
+    <div class="field">
+        <textarea id="result" rows="14" readonly></textarea>
+        <div class="buttons">
+            <button id="copyBtn" type="button">Скопировать в буфер обмена</button>
+        </div>
+    </div>
+
+    <script>
+        function generatePrompt() {
+            const subject = document.getElementById("subject").value.trim();
+            const topic = document.getElementById("topic").value.trim();
+            const age = document.getElementById("age").value.trim();
+            const language = document.getElementById("language").value;
+            const format = document.getElementById("format").value;
+            const style = document.getElementById("style").value.trim();
+            const keyPoints = document.getElementById("keyPoints").value.trim();
+            const extra = document.getElementById("extra").value.trim();
+
+            const safeSubject = subject || "любой школьный предмет";
+            const safeTopic = topic || "определённая тема";
+            const safeAge = age || "школьники";
+            const safeStyle = style || "дружелюбный и запоминающийся";
+
+            let prompt = "";
+
+            prompt += `Ты — педагогический ИИ, который помогает учителям создавать мнемонические материалы.\n\n`;
+            prompt += `Задача: создать ${format} по предмету "${safeSubject}" на тему "${safeTopic}".\n`;
+            prompt += `Аудитория: ${safeAge}.\n`;
+            prompt += `Язык: ${language}.\n`;
+            prompt += `Желаемый стиль: ${safeStyle}.\n\n`;
+
+            if (keyPoints) {
+                prompt += `Обязательно включи в ${format} следующие ключевые факты/правила (это “атомы смысла”):\n`;
+                prompt += keyPoints.split('\n').map(line => "- " + line.trim()).join('\n') + "\n\n";
+            } else {
+                prompt += `Ключевые факты/правила нужно сначала выделить и кратко перечислить.\n\n`;
+            }
+
+            prompt += `Используй такой алгоритм создания мнемоники:\n`;
+            prompt += `1) Выдели атомы смысла (5–10 ключевых фактов).\n`;
+            prompt += `2) Преобразуй их в ритмические строки под метр 4/4.\n`;
+            prompt += `3) Подбери простую и известную мелодию (если формат — песня) или чёткий ритм (если формат — стишок/аудио-подсказка).\n`;
+            prompt += `4) Впиши ритмические строки в структуру мелодии/ритма, избегая “воды”.\n`;
+            prompt += `5) Добавь рефрен, который повторяет главную мысль.\n`;
+            prompt += `6) Убедись, что текст легко напевается или проговаривается и сам “запускается” в памяти.\n\n`;
+
+            if (extra) {
+                prompt += `Дополнительные пожелания учителя:\n`;
+                prompt += extra + "\n\n";
+            }
+
+            prompt += `В итоге сначала кратко выпиши атомы смысла, затем покажи финальный текст ${format}.\n`;
+
+            document.getElementById("result").value = prompt;
+        }
+
+        function clearForm() {
+            document.getElementById("subject").value = "";
+            document.getElementById("topic").value = "";
+            document.getElementById("age").value = "";
+            document.getElementById("language").value = "русский";
+            document.getElementById("format").value = "песня";
+            document.getElementById("style").value = "";
+            document.getElementById("keyPoints").value = "";
+            document.getElementById("extra").value = "";
+            document.getElementById("result").value = "";
+        }
+
+        async function copyResult() {
+            const textArea = document.getElementById("result");
+            const text = textArea.value;
+
+            if (!text) {
+                alert("Сначала сгенерируйте промпт.");
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(text);
+                alert("Промпт скопирован в буфер обмена.");
+            } catch (e) {
+                textArea.select();
+                document.execCommand("copy");
+                alert("Промпт скопирован (через выделение текста).");
+            }
+        }
+
+        document.getElementById("generateBtn").addEventListener("click", generatePrompt);
+        document.getElementById("clearBtn").addEventListener("click", clearForm);
+        document.getElementById("copyBtn").addEventListener("click", copyResult);
+    </script>
+</body>
+</html>
